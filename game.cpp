@@ -10,6 +10,20 @@ using namespace std;
 #define WINDOW_HEIGHT 512
 #define WINDOW_WIDTH 1024
 
+#define TURNING_SPEED 0.05
+
+
+
+/*
+    TODO
+    move stuff into different files, input, filestuff, rendering
+    add gridlines
+    double check controls 
+    part 2 of tut
+    part 3 of tut
+    part 4 of tut
+*/
+
 
 struct Vector{
     GLfloat x;
@@ -33,17 +47,23 @@ struct Mat4{
     float m[4][4] = {0};
 };
 
+
+
+//global variables
 Mesh myMesh;
 Mat4 matProj, matRotX, matRotZ, matRotY;
-int zoom = 10000000;
-float angle = 0;
+float zoom = 3;
+float xAngle=0, yAngle=0, zAngle=0;
+
+
+
 
 void initMatProj(){
-    float zNear = 0.1;
+    float zNear = -0.1;
     float zFar = 1000;
     float fov = 90;
     float aspectRatio = (float)WINDOW_HEIGHT/(float)WINDOW_WIDTH;
-    float fovRad = 1 - tan(fov*0.5/180*3.1415926);
+    float fovRad = 1 / tan(fov*0.5/180*3.1415926);
 
     matProj.m[0][0] = aspectRatio*fovRad;
     matProj.m[1][1] = fovRad;
@@ -52,34 +72,32 @@ void initMatProj(){
     matProj.m[2][3] = 1;
 }
 
-void rotMat(){
+void updateRotationMats(){
     //rotation z
-    matRotZ.m[0][0] = cosf(angle);
-	matRotZ.m[0][1] = sinf(angle);
-	matRotZ.m[1][0] = -sinf(angle);
-	matRotZ.m[1][1] = cosf(angle);
+    matRotZ.m[0][0] = cosf(zAngle);
+	matRotZ.m[0][1] = sinf(zAngle);
+	matRotZ.m[1][0] = -sinf(zAngle);
+	matRotZ.m[1][1] = cosf(zAngle);
 	matRotZ.m[2][2] = 1;
 	matRotZ.m[3][3] = 1;
 	// Rotation X
 	matRotX.m[0][0] = 1;
-	matRotX.m[1][1] = cosf(angle * 0.5);
-	matRotX.m[1][2] = sinf(angle * 0.5);
-	matRotX.m[2][1] = -sinf(angle * 0.5);
-	matRotX.m[2][2] = cosf(angle * 0.5);
+	matRotX.m[1][1] = cosf(xAngle);
+	matRotX.m[1][2] = sinf(xAngle);
+	matRotX.m[2][1] = -sinf(xAngle);
+	matRotX.m[2][2] = cosf(xAngle);
 	matRotX.m[3][3] = 1;
     // Rotation Y
-	matRotY.m[0][0] = cosf(angle*0.2);
-	matRotY.m[2][0] = sinf(angle * 0.2);
+	matRotY.m[0][0] = cosf(yAngle);
+	matRotY.m[2][0] = sinf(yAngle);
 	matRotY.m[1][1] = 1;
-	matRotY.m[0][2] = -sinf(angle * 0.2);
-	matRotY.m[2][2] = cosf(angle * 0.2);
+	matRotY.m[0][2] = -sinf(yAngle);
+	matRotY.m[2][2] = cosf(yAngle);
     matRotY.m[3][3] = 1;
 }
 
 
 struct Vector matrixMultiply(Vector in, Mat4 m){
-
-
     Vector out = Vector();
 
     out.x = in.x*m.m[0][0] + in.y*m.m[1][0] + in.z*m.m[2][0] + m.m[3][0];
@@ -100,13 +118,11 @@ struct Vector matrixMultiply(Vector in, Mat4 m){
 
 
 
-
-//TODO
 void drawMesh(){
     for(auto tri: myMesh.tris){
         Tri projectedTri, translatedTri, rotateXTri, rotateXZTri, rotateXZYTri;
         
-        
+        //rotate
         rotateXTri.v1 = matrixMultiply(tri.v1, matRotX);
         rotateXTri.v2 = matrixMultiply(tri.v2, matRotX);
         rotateXTri.v3 = matrixMultiply(tri.v3, matRotX);
@@ -119,38 +135,38 @@ void drawMesh(){
         rotateXZYTri.v2 = matrixMultiply(rotateXZTri.v2, matRotY);
         rotateXZYTri.v3 = matrixMultiply(rotateXZTri.v3, matRotY);
 
+
    
+        //translate, move it further from the "camera"
         translatedTri = rotateXZYTri;
 
-        translatedTri.v1.z += 5;
-        translatedTri.v2.z += 5;
-        translatedTri.v3.z += 5;
+        translatedTri.v1.z += zoom;
+        translatedTri.v2.z += zoom;
+        translatedTri.v3.z += zoom;
 
         
-
+        //project, make it 2d
         projectedTri.v1 = matrixMultiply(translatedTri.v1, matProj);
         projectedTri.v2 = matrixMultiply(translatedTri.v2, matProj);
         projectedTri.v3 = matrixMultiply(translatedTri.v3, matProj);
 
+
+        //draw
         glBegin(GL_LINES);
-            glVertex2f(projectedTri.v1.x*zoom, projectedTri.v1.y*zoom);
-            glVertex2f(projectedTri.v2.x*zoom, projectedTri.v2.y*zoom);
+            glVertex2f(projectedTri.v1.x, projectedTri.v1.y);
+            glVertex2f(projectedTri.v2.x, projectedTri.v2.y);
         glEnd();
         glBegin(GL_LINES);
-            glVertex2f(projectedTri.v2.x*zoom, projectedTri.v2.y*zoom);
-            glVertex2f(projectedTri.v3.x*zoom, projectedTri.v3.y*zoom);
+            glVertex2f(projectedTri.v2.x, projectedTri.v2.y);
+            glVertex2f(projectedTri.v3.x, projectedTri.v3.y);
         glEnd();
         glBegin(GL_LINES);
-            glVertex2f(projectedTri.v3.x*zoom, projectedTri.v3.y*zoom);
-            glVertex2f(projectedTri.v1.x*zoom, projectedTri.v1.y*zoom);
+            glVertex2f(projectedTri.v3.x, projectedTri.v3.y);
+            glVertex2f(projectedTri.v1.x, projectedTri.v1.y);
         glEnd();
-        
-
-
-
-      
     }
 }
+
 
 
 struct Mesh generateMeshFromFile(){
@@ -201,24 +217,50 @@ struct Mesh generateMeshFromFile(){
 
 
 void mouse(int button, int state, int x, int y){
-    if(button == 4 && zoom >= 100000){
-        zoom -= 100000;
+    //scroll to scale object
+    if(button == 4 && zoom >= 0.01){
+        zoom -= 0.05;
     }else if(button == 3){
-        zoom += 100000;
+        zoom += 0.05;
     }
     glutPostRedisplay();
 }
 
+void buttons(unsigned char key, int x, int y){
+    switch(key){
+        case 'w':
+            xAngle += TURNING_SPEED;
+            break;
+        case 's':
+            xAngle -= TURNING_SPEED;
+            break;
+        case 'd':
+            yAngle -= TURNING_SPEED;
+            break;
+        case 'a':
+            yAngle += TURNING_SPEED;
+            break;
+        case 'q':
+            zAngle += TURNING_SPEED;
+            break;
+        case 'e':
+            zAngle -= TURNING_SPEED;
+            break;
+    }
+    glutPostRedisplay();//force redraw
+}
+
 
 void display(){
-    glClear(GL_COLOR_BUFFER_BIT);//not sure
+    glClear(GL_COLOR_BUFFER_BIT);//clear the screen
     
     drawMesh();
-    rotMat();
-    cout << angle << "hi\n";
-    angle += 0.001;
+    updateRotationMats();
+    xAngle += 0.0005;
+    yAngle += 0.0007;
+    zAngle += 0.0003;
 
-    glutPostRedisplay();//force it to refresh?
+    glutPostRedisplay();//force it to redraw
     glFlush();//not sure
 }
 
@@ -227,18 +269,12 @@ void display(){
 
 
 void init(){
-    //cout << "initializing\n";
     myMesh = generateMeshFromFile();
-        // for(int i=0 ; i< myMesh.tris.size() ; i++){
-        //     printf("Triangle %i has points: \n(%f,%f,%f)\n(%f,%f,%f)\n(%f,%f,%f)\n\n",
-        //     i,myMesh.tris[i].v1.x,myMesh.tris[i].v1.y,myMesh.tris[i].v1.z,myMesh.tris[i].v2.x,myMesh.tris[i].v2.y,myMesh.tris[i].v2.z,myMesh.tris[i].v3.x,myMesh.tris[i].v3.y,myMesh.tris[i].v3.z);
-        // }
     initMatProj();
     glutInitDisplayMode(GLUT_SINGLE);//not sure
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     glutCreateWindow("3ddddddd");
     glClearColor(0.4,0.4,0.4,0);//set bg colour to grey
-    
 }
 
 
@@ -249,6 +285,7 @@ int main(int argc, char** argv){
     init();
     glutSwapBuffers();//not sure
     glutDisplayFunc(display);
+    glutKeyboardFunc(buttons);
     glutMouseFunc(mouse);
     glutMainLoop();
     return 0;
