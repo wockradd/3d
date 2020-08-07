@@ -1,2 +1,3 @@
-g++ game.cpp -lglut -lGLU -lGL
+rm a.out
+g++ main.cpp -lglut -lGLU -lGL
 ./a.out

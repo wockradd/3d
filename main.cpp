@@ -3,9 +3,10 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <vector>
 #include <math.h>
 using namespace std;
+
+#include "./hfiles/structs.h"
 
 #define WINDOW_HEIGHT 512
 #define WINDOW_WIDTH 1024
@@ -25,27 +26,6 @@ using namespace std;
 */
 
 
-struct Vector{
-    GLfloat x;
-    GLfloat y;
-    GLfloat z;
-}; 
-
-struct Tri{
-    Vector v1;
-    Vector v2;
-    Vector v3;
-};
-
-
-struct Mesh{
-    vector<Tri> tris;
-};
-
-
-struct Mat4{
-    float m[4][4] = {0};
-};
 
 
 
@@ -257,7 +237,6 @@ void display(){
     drawMesh();
     updateRotationMats();
     xAngle += 0.0005;
-    yAngle += 0.0007;
     zAngle += 0.0003;
 
     glutPostRedisplay();//force it to redraw
