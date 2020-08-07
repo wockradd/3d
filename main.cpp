@@ -1,5 +1,6 @@
 #include <GL/glut.h>
 #include <stdio.h>
+#include <iostream>
 #include <math.h>
 using namespace std;
 
@@ -16,9 +17,10 @@ using namespace std;
 
 /*
     TODO
-    double check controls 
-    part 2 of tut
-    part 3 of tut
+    depth buffer
+    create linear algebra library
+    clipping
+    proper camera and lighting
     part 4 of tut
 */
 
@@ -31,6 +33,10 @@ Mesh myMesh;
 Mat4 matProj, matRotX, matRotZ, matRotY;
 float zoom = 3;
 float xAngle=0, yAngle=0, zAngle=0;
+
+//TEMP
+Vector camera = {0,0,0};
+Vector lightDir = {0,0,-1};
 
 
 
@@ -47,6 +53,40 @@ void initMatProj(){
     matProj.m[2][2] = zFar / (zFar - zNear);
     matProj.m[3][2] = (-zFar*zNear) / (zFar - zNear);
     matProj.m[2][3] = 1;
+}
+
+
+Vector getCrossProduct(Vector a, Vector b){
+    return Vector {
+        a.y*b.z - a.z*b.y,
+        a.z*b.x - a.x*b.z,
+        a.x*b.y - a.y*b.x, 
+    };
+}
+
+float getDotProduct(Vector a, Vector b){
+    return a.x*b.x + a.y*b.y + a.z*b.z; 
+}
+
+
+Vector addVectors(Vector a, Vector b){
+    return Vector {a.x+b.x, a.y+b.y, a.z+b.z};
+}
+
+Vector subtractVectors(Vector a, Vector b){
+    return Vector {a.x-b.x, a.y-b.y, a.z-b.z};
+}
+
+Vector normalise(Vector v){
+    float length = sqrt(v.x*v.x + v.y*v.y + v.z*v.z);
+    return Vector {v.x/length , v.y/length, v.z/length};
+}
+
+Vector getTriNormal(Tri tri){
+    Vector line1 = subtractVectors(tri.v2,tri.v1);
+    Vector line2 = subtractVectors(tri.v3,tri.v1);
+    Vector result = getCrossProduct(line1,line2);
+    return normalise(getCrossProduct(line1,line2));
 }
 
 
@@ -122,26 +162,40 @@ void drawMesh(){
         translatedTri.v2.z += zoom;
         translatedTri.v3.z += zoom;
 
-        
-        //project, make it 2d
-        projectedTri.v1 = matrixMultiply(translatedTri.v1, matProj);
-        projectedTri.v2 = matrixMultiply(translatedTri.v2, matProj);
-        projectedTri.v3 = matrixMultiply(translatedTri.v3, matProj);
+        //work out normal
+        translatedTri.normal = getTriNormal(translatedTri);
 
 
-        //draw
-        glBegin(GL_LINES);
-            glVertex2f(projectedTri.v1.x, projectedTri.v1.y);
-            glVertex2f(projectedTri.v2.x, projectedTri.v2.y);
-        glEnd();
-        glBegin(GL_LINES);
-            glVertex2f(projectedTri.v2.x, projectedTri.v2.y);
-            glVertex2f(projectedTri.v3.x, projectedTri.v3.y);
-        glEnd();
-        glBegin(GL_LINES);
-            glVertex2f(projectedTri.v3.x, projectedTri.v3.y);
-            glVertex2f(projectedTri.v1.x, projectedTri.v1.y);
-        glEnd();
+        //only draw it if we can see it
+        if(getDotProduct(translatedTri.normal, subtractVectors(translatedTri.v1, camera)) < 0){
+            float howLight = getDotProduct(lightDir, translatedTri.normal);
+
+            //project, make it 2d
+            projectedTri.v1 = matrixMultiply(translatedTri.v1, matProj);
+            projectedTri.v2 = matrixMultiply(translatedTri.v2, matProj);
+            projectedTri.v3 = matrixMultiply(translatedTri.v3, matProj);
+
+            //draw
+            glColor3f(howLight, 0,0);
+            glBegin(GL_POLYGON);
+                glVertex2f(projectedTri.v1.x, projectedTri.v1.y);
+                glVertex2f(projectedTri.v2.x, projectedTri.v2.y);
+                glVertex2f(projectedTri.v3.x, projectedTri.v3.y);
+            glEnd();
+            glColor3f(0, 0,0);
+            glBegin(GL_LINES);
+                glVertex2f(projectedTri.v1.x, projectedTri.v1.y);
+                glVertex2f(projectedTri.v2.x, projectedTri.v2.y);
+            glEnd();
+            glBegin(GL_LINES);
+                glVertex2f(projectedTri.v2.x, projectedTri.v2.y);
+                glVertex2f(projectedTri.v3.x, projectedTri.v3.y);
+            glEnd();
+            glBegin(GL_LINES);
+                glVertex2f(projectedTri.v3.x, projectedTri.v3.y);
+                glVertex2f(projectedTri.v1.x, projectedTri.v1.y);
+            glEnd();
+        }
     }
 }
 
@@ -155,6 +209,9 @@ void display(){
     
     drawMesh();
     updateRotationMats();
+
+    // xAngle += 0.0007;
+    // yAngle += 0.0003;
 
     glutPostRedisplay();//force it to redraw
     glFlush();//not sure

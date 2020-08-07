@@ -12,7 +12,7 @@ struct Mesh generateMeshFromFile(){
     //reading file stuff
     string line;
     ifstream myfile; 
-    myfile.open("./resources/cart.obj");
+    myfile.open("./resources/cube.obj");
 
     if (myfile.is_open()){
         while (getline(myfile,line)){//read line by line
