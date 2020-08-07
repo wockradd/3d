@@ -1,24 +1,21 @@
 #include <GL/glut.h>
 #include <stdio.h>
-#include <iostream>
-#include <sstream>
-#include <fstream>
 #include <math.h>
 using namespace std;
 
-#include "./hfiles/structs.h"
+#include "./hfiles/main.h"
+#include "./hfiles/fileStuff.h"
+#include "./hfiles/controls.h"
 
 #define WINDOW_HEIGHT 512
 #define WINDOW_WIDTH 1024
 
-#define TURNING_SPEED 0.05
+
 
 
 
 /*
     TODO
-    move stuff into different files, input, filestuff, rendering
-    add gridlines
     double check controls 
     part 2 of tut
     part 3 of tut
@@ -37,7 +34,7 @@ float xAngle=0, yAngle=0, zAngle=0;
 
 
 
-
+//set up the values for the projection matrix, only run once
 void initMatProj(){
     float zNear = -0.1;
     float zFar = 1000;
@@ -52,6 +49,8 @@ void initMatProj(){
     matProj.m[2][3] = 1;
 }
 
+
+//update the rotation matrix values based on the current angles
 void updateRotationMats(){
     //rotation z
     matRotZ.m[0][0] = cosf(zAngle);
@@ -77,6 +76,7 @@ void updateRotationMats(){
 }
 
 
+//multiply a vec3 by a mat4
 struct Vector matrixMultiply(Vector in, Mat4 m){
     Vector out = Vector();
 
@@ -90,8 +90,6 @@ struct Vector matrixMultiply(Vector in, Mat4 m){
         out.y /= w;
         out.z /= w;
     }
-
-
     return out;
 }
 
@@ -149,86 +147,7 @@ void drawMesh(){
 
 
 
-struct Mesh generateMeshFromFile(){
-    Mesh m = Mesh();//final mesh we're gonna return
-    vector<Vector> tempVec;
 
-    //reading file stuff
-    string line;
-    ifstream myfile; 
-    myfile.open("./resources/cube.obj");
-
-    if (myfile.is_open()){
-        while (getline(myfile,line)){//read line by line
-            stringstream ss;
-            char junk;
-            float x, y ,z;
-
-            if(line[0] == 'v'){
-                Vector v = Vector();      //create a new vector
-                ss << line;               //send the string to the stream
-                ss >> junk >> x >> y >> z;//use the stream to initialize the variables
-
-                v.x = x;
-                v.y = y;  //create the vector
-                v.z = z;
-
-                tempVec.push_back(v); //add to list
-            }
-
-            if(line[0] =='f'){
-                Tri t = Tri();            //create a new tri
-                ss << line;               //turn the string into a stream
-                ss >> junk >> x >> y >> z;//use the stream to initialize the variables
-
-                t.v1 = tempVec[x-1];
-                t.v2 = tempVec[y-1]; //create new tri
-                t.v3 = tempVec[z-1];
-
-                m.tris.push_back(t);//add to list
-            } 
-        }
-    myfile.close();
-  }else{
-      cout << "something went wrong\n";
-  }
-  return m;
-}
-
-
-void mouse(int button, int state, int x, int y){
-    //scroll to scale object
-    if(button == 4 && zoom >= 0.01){
-        zoom -= 0.05;
-    }else if(button == 3){
-        zoom += 0.05;
-    }
-    glutPostRedisplay();
-}
-
-void buttons(unsigned char key, int x, int y){
-    switch(key){
-        case 'w':
-            xAngle += TURNING_SPEED;
-            break;
-        case 's':
-            xAngle -= TURNING_SPEED;
-            break;
-        case 'd':
-            yAngle -= TURNING_SPEED;
-            break;
-        case 'a':
-            yAngle += TURNING_SPEED;
-            break;
-        case 'q':
-            zAngle += TURNING_SPEED;
-            break;
-        case 'e':
-            zAngle -= TURNING_SPEED;
-            break;
-    }
-    glutPostRedisplay();//force redraw
-}
 
 
 void display(){
@@ -236,8 +155,6 @@ void display(){
     
     drawMesh();
     updateRotationMats();
-    xAngle += 0.0005;
-    zAngle += 0.0003;
 
     glutPostRedisplay();//force it to redraw
     glFlush();//not sure
